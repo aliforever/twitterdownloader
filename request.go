@@ -258,7 +258,7 @@ func (t *Twitter) getm3u8List(c *Client) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	cmd := exec.Command("ffmpeg", `-protocol_whitelist`, `file,http,https,tcp,tls`, `-i`, m3FileName, "-codec", "copy", fileName)
+	cmd := exec.Command("ffmpeg", `-i`, m3FileName, "-codec", "copy", fileName)
 	var out bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &out
