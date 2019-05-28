@@ -258,7 +258,7 @@ func (t *Twitter) getm3u8List(c *Client) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	cmd := exec.Command("ffmpeg", `-i`, m3FileName, "-codec", "copy", "-bsf:a", "aac_adtstoasc", fileName)
+	cmd := exec.Command("ffmpeg", "-y", `-i`, m3FileName, "-codec", "copy", "-bsf:a", "aac_adtstoasc", fileName)
 	var out bytes.Buffer
 	var stderr bytes.Buffer
 	cmd.Stdout = &out
