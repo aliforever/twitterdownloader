@@ -302,7 +302,7 @@ func saveM3U8(url string, c *Client) (fileName string, err error) {
 	}
 	b, _ := ioutil.ReadAll(reader)
 	str := string(b)
-	r := regexp.MustCompile(`\/ext_tw_video\/\d+\/.+.ts`)
+	r := regexp.MustCompile(`/.+`)
 	urls := r.FindAllString(str, -1)
 	for _, url := range urls {
 		newUrl := strings.Replace(url, url, "https://video.twimg.com"+url, -1)
