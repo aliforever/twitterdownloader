@@ -63,11 +63,7 @@ func playList(reader io.ReadCloser) (string, error) {
 }
 
 func videoList(reader io.ReadCloser) ([]string, error) {
-	// f, err := os.Open("video.m3u8")
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// p, listType, err := m3u8.DecodeFrom(bufio.NewReader(f), true)
+
 	p, listType, err := m3u8.DecodeFrom(reader, true)
 	if err != nil {
 		panic(err)

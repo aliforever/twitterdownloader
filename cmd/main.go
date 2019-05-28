@@ -21,11 +21,11 @@ func main() {
 	client := tw.NewClient()
 
 	//Setup SOCK5
-	_, err := client.ClientWithSOCKS5("tcp", "127.0.0.1:1080")
-	if err != nil {
-		log.Errorf("SOCK5 Init failed: %s", err.Error())
-		return
-	}
+	//_, err := client.ClientWithSOCKS5("tcp", "127.0.0.1:1080")
+	//if err != nil {
+	//	log.Errorf("SOCK5 Init failed: %s", err.Error())
+	//	return
+	//}
 
 	twitter := &tw.Twitter{}
 	twitter.SetupClient(client)

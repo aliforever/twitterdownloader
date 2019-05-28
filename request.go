@@ -1,13 +1,18 @@
 package twitterdownloader
 
 import (
+	"bytes"
 	"compress/gzip"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"gopkg.in/mgo.v2/bson"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
+	"os/exec"
+	"regexp"
 	"strings"
 )
 
@@ -249,27 +254,25 @@ func (t *Twitter) getm3u8List(c *Client) (string, error) {
 	fileName = strings.Split(fileName, ".")[0] + ".mp4"
 	m3u8Url := "https://video.twimg.com" + uri
 
-	videoList, err := getM3U8(m3u8Url, c)
+	m3FileName, err := saveM3U8(m3u8Url, c)
 	if err != nil {
 		return "", err
 	}
-	files := []string{}
-	for _, v := range videoList {
-		videoUrl := "https://video.twimg.com" + v
-		//Get video clip save concat them into mp4 file
-		file, err := getVideoClip(videoUrl, c)
-		if err != nil {
-			return "", err
-		}
-		files = append(files, file)
+	cmd := exec.Command("ffmpeg", `-protocol_whitelist`, `file,http,https,tcp,tls`, `-i`, m3FileName, "-codec", "copy", fileName)
+	var out bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &stderr
+	err = cmd.Run()
+	if err != nil {
+		os.Remove(m3FileName)
+		return "", errors.New(fmt.Sprint(err) + ": " + stderr.String())
 	}
-
-	//Combine all the videos into one mp4
-	combineVideoClip(fileName, files)
-	return fileName, nil
+	os.Remove(m3FileName)
+	return fileName, err
 }
 
-func getM3U8(url string, c *Client) ([]string, error) {
+func saveM3U8(url string, c *Client) (fileName string, err error) {
 	if c.client == nil {
 		c.client = &http.Client{}
 	}
@@ -279,12 +282,12 @@ func getM3U8(url string, c *Client) ([]string, error) {
 	req.Header.Add("Accept-Encoding", "gzip,deflate,br")
 
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	defer resp.Body.Close()
 
@@ -297,51 +300,16 @@ func getM3U8(url string, c *Client) ([]string, error) {
 	default:
 		reader = resp.Body
 	}
-
-	return videoList(reader)
-}
-
-func getVideoClip(url string, c *Client) (string, error) {
-	if c.client == nil {
-		c.client = &http.Client{}
+	b, _ := ioutil.ReadAll(reader)
+	str := string(b)
+	r := regexp.MustCompile(`\/ext_tw_video\/\d+\/.+.ts`)
+	urls := r.FindAllString(str, -1)
+	for _, url := range urls {
+		newUrl := strings.Replace(url, url, "https://video.twimg.com"+url, -1)
+		str = strings.Replace(str, url, newUrl, -1)
 	}
-
-	req, err := http.NewRequest("GET", url, nil)
-	req.Header.Add("Accept", "*/*")
-	req.Header.Add("Accept-Encoding", "gzip,deflate,br")
-
-	if err != nil {
-		return "", err
-	}
-
-	resp, err := c.client.Do(req)
-	defer resp.Body.Close()
-
-	fileName := extractFilename(url)
-
-	body, err := ioutil.ReadAll(resp.Body)
-
-	if err = ioutil.WriteFile(fileName, body, os.ModePerm); err != nil {
-		return "", err
-	}
-
-	return fileName, nil
-}
-
-func combineVideoClip(filename string, files []string) {
-	file, err := os.Create(filename)
-	if err != nil {
-		return
-	}
-	writeLen := 0
-	for _, v := range files {
-		data, err := ioutil.ReadFile(v)
-		if err != nil {
-			return
-		}
-		file.WriteAt(data, int64(writeLen))
-		writeLen += len(data)
-		os.Remove(v)
-	}
-	file.Close()
+	b = []byte(str)
+	fileName = bson.NewObjectId().Hex() + ".m3u8"
+	err = ioutil.WriteFile(fileName, b, os.ModePerm)
+	return
 }
